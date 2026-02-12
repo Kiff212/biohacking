@@ -21,8 +21,6 @@ O Projeto M não é:
 
 É um sistema de construção de autonomia.
 
----
-
 ## Por que a maioria falha?
 
 

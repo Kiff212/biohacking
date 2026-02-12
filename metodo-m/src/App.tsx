@@ -1,13 +1,22 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { Lesson } from './pages/Lesson';
-import { Surprise } from './pages/Surprise';
-import { NotFound } from './pages/NotFound';
-import { Protected } from './components/Protected';
 import { Background } from './components/Background';
-import { SysAdmin } from './pages/SysAdmin';
-import { Arsenal } from './pages/Arsenal';
+import { Protected } from './components/Protected';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
+const Lesson = lazy(() => import('./pages/Lesson').then(module => ({ default: module.Lesson })));
+const Surprise = lazy(() => import('./pages/Surprise').then(module => ({ default: module.Surprise })));
+const NotFound = lazy(() => import('./pages/NotFound').then(module => ({ default: module.NotFound })));
+const SysAdmin = lazy(() => import('./pages/SysAdmin').then(module => ({ default: module.SysAdmin })));
+const Arsenal = lazy(() => import('./pages/Arsenal').then(module => ({ default: module.Arsenal })));
+
+// Loading Component
+const PageLoader = () => (
+    <div className="flex h-screen items-center justify-center bg-background text-foreground">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+);
 
 export default function App() {
     return (
@@ -23,10 +32,26 @@ export default function App() {
                             <Route path="/config/sys-node-v1" element={<SysAdmin />} />
 
                             <Route element={<Protected />}>
-                                <Route path="/" element={<Dashboard />} />
-                                <Route path="/aula/:slug" element={<Lesson />} />
-                                <Route path="/surprise" element={<Surprise />} />
-                                <Route path="/arsenal" element={<Arsenal />} />
+                                <Route path="/" element={
+                                    <Suspense fallback={<PageLoader />}>
+                                        <Dashboard />
+                                    </Suspense>
+                                } />
+                                <Route path="/aula/:slug" element={
+                                    <Suspense fallback={<PageLoader />}>
+                                        <Lesson />
+                                    </Suspense>
+                                } />
+                                <Route path="/surprise" element={
+                                    <Suspense fallback={<PageLoader />}>
+                                        <Surprise />
+                                    </Suspense>
+                                } />
+                                <Route path="/arsenal" element={
+                                    <Suspense fallback={<PageLoader />}>
+                                        <Arsenal />
+                                    </Suspense>
+                                } />
                             </Route>
 
                             <Route path="*" element={<NotFound />} />

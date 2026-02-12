@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth.new';
 import { Navbar } from '../components/Navbar';
-import { LESSONS } from '../components/LessonList';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { LESSONS, BONUS_LESSONS } from '../components/LessonList';
+import { CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { SwipeDeck } from '../components/SwipeDeck';
 import { BottomProgress } from '../components/BottomProgress';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '../components/ui/breadcrumb';
+import { Skeleton } from '../components/ui/skeleton';
 
 interface LessonCard {
     heading: string;
@@ -24,12 +26,13 @@ export function Lesson() {
     const [cardIndex, setCardIndex] = useState(0);
     const [saving, setSaving] = useState(false);
 
-    const lesson = LESSONS.find((l) => l.slug === slug);
+    const lesson = LESSONS.find((l) => l.slug === slug) || BONUS_LESSONS.find((l) => l.slug === slug);
     const currentIndex = LESSONS.findIndex((l) => l.slug === slug);
 
     // Calculate Progress
     const totalLessons = LESSONS.length;
-    const lessonPct = Math.round(((currentIndex + 1) / totalLessons) * 100);
+    // If bonus (index -1), we don't show specific lesson 2/5 progress, maybe just 100% or hidden
+    const lessonPct = currentIndex !== -1 ? Math.round(((currentIndex + 1) / totalLessons) * 100) : 100;
 
     useEffect(() => {
         if (!slug) return;
@@ -57,15 +60,24 @@ export function Lesson() {
         };
 
         setLoading(true);
+
         Promise.all([loadContent(), checkProgress()]).then(() => setLoading(false));
+
+        // Save as last seen
+        localStorage.setItem('metodo_m_last_lesson', slug);
+
+        // Prefetch next lesson
+        const nextLessonIndex = LESSONS.findIndex((l) => l.slug === slug) + 1;
+        if (nextLessonIndex > 0 && nextLessonIndex < LESSONS.length) {
+            const nextSlug = LESSONS[nextLessonIndex].slug;
+            import(`../content/${nextSlug}.md?raw`).catch(() => { });
+        }
     }, [slug, user]);
 
     // Parse Markdown into Cards
     const cards = useMemo<LessonCard[]>(() => {
         if (!content) return [];
 
-        // Split primarily by `---` separator for controlled card creation
-        // The regex `/\r?\n\s*---\s*\r?\n/` handles Windows/Unix newlines and spaces
         const rawParts = content.split(/\r?\n\s*---\s*\r?\n/);
 
         const parsedCards = rawParts
@@ -73,14 +85,8 @@ export function Lesson() {
             .filter((part) => part.length > 0)
             .map((part, i) => {
                 let cleanPart = part;
-
-                // Extract Title look for first H1 or H2
                 const headerMatch = cleanPart.match(/^#{1,2}\s+(.+)$/m);
                 let heading = headerMatch ? headerMatch[1] : `Seção ${i + 1}`;
-
-                // Optional: We can remove the title from the body for cleaner cards
-                // or keep it if it provides context. Let's keep it simple for now.
-                // cleanPart = cleanPart.replace(/^#{1,2}\s+.+$/m, '').trim();
 
                 return {
                     heading,
@@ -88,7 +94,6 @@ export function Lesson() {
                 };
             });
 
-        // Add final "Completion" card
         parsedCards.push({
             heading: "Conclusão",
             body: `### Parabéns! \n\nVocê finalizou o conteúdo desta aula. \n\nClique abaixo para marcar como **Concluída** e avançar.`
@@ -103,6 +108,9 @@ export function Lesson() {
     const handleComplete = async () => {
         if (!user || !slug) return;
         setSaving(true);
+        // Optimistic update
+        setIsCompleted(true);
+
         try {
             await supabase
                 .from('user_progress')
@@ -110,10 +118,13 @@ export function Lesson() {
                     { user_id: user.id, lesson_slug: slug, completed: true, completed_at: new Date().toISOString() },
                     { onConflict: 'user_id,lesson_slug' }
                 );
-            setIsCompleted(true);
+            // Navigate after successful save to ensure data consistency
             navigate('/');
         } catch (error) {
             console.error('Error saving progress', error);
+            // Revert on error
+            setIsCompleted(false);
+            // Show error toast (if implemented)
         } finally {
             setSaving(false);
         }
@@ -126,18 +137,48 @@ export function Lesson() {
             <Navbar />
 
             <div className="max-w-xl mx-auto px-4 py-8 pt-24">
-                <button
-                    onClick={() => navigate('/')}
-                    className="mb-6 flex items-center text-sm text-muted-foreground hover:text-white transition-colors"
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar ao Dashboard
-                </button>
+                <div className="mb-6">
+                    <Breadcrumb>
+                        <BreadcrumbList>
+                            <BreadcrumbItem>
+                                <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbLink href="#">
+                                    {(lesson as any)?.category || 'Módulo'}
+                                </BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbPage className="font-semibold text-foreground">
+                                    {lesson?.title.split('. ')[1] || lesson?.title}
+                                </BreadcrumbPage>
+                            </BreadcrumbItem>
+                        </BreadcrumbList>
+                    </Breadcrumb>
+                </div>
 
                 {loading ? (
-                    <div className="animate-pulse flex flex-col gap-4">
-                        <div className="h-8 w-3/4 bg-white/10 rounded"></div>
-                        <div className="h-64 w-full bg-white/5 rounded"></div>
+                    <div className="flex flex-col gap-6">
+                        {/* Breadcrumb Skeleton */}
+                        <div className="flex items-center gap-2 mb-6">
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-4 w-4" />
+                            <Skeleton className="h-4 w-24" />
+                        </div>
+
+                        {/* Card Skeleton */}
+                        <div className="w-full aspect-[3/4] max-h-[60vh] rounded-2xl bg-muted/20 relative overflow-hidden border border-white/5">
+                            <div className="p-6 space-y-4">
+                                <Skeleton className="h-8 w-3/4" />
+                                <div className="space-y-2">
+                                    <Skeleton className="h-4 w-full" />
+                                    <Skeleton className="h-4 w-full" />
+                                    <Skeleton className="h-4 w-5/6" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -148,7 +189,6 @@ export function Lesson() {
                             onIndexChange={setCardIndex}
                         />
 
-                        {/* Special Actions for Last Card */}
                         {cardIndex === cards.length - 1 && (
                             <div className="mt-6 animate-in fade-in slide-in-from-bottom-4">
                                 <Button

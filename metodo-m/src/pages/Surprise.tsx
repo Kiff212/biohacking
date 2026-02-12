@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Badge } from '../components/ui/badge';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth.new';
 import { Navbar } from '../components/Navbar';
-import { TOTAL_LESSONS } from '../components/LessonList';
-import { Lock, ShoppingBag } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
+import { TOTAL_LESSONS, BONUS_LESSONS } from '../components/LessonList';
+import { Lock, ShoppingBag, BookOpen, Crown } from 'lucide-react';
+import { Navigate, Link } from 'react-router-dom';
 
 interface AffiliateItem {
     id: string;
@@ -72,6 +73,41 @@ export function Surprise() {
                     </p>
                 </div>
 
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-12">
+                    {/* Bonus Content */}
+                    {BONUS_LESSONS.map((lesson) => (
+                        <Link key={lesson.slug} to={`/aula/${lesson.slug}`} className="group relative overflow-hidden rounded-xl border border-yellow-500/20 bg-yellow-950/10 hover:bg-yellow-900/20 transition-all hover:-translate-y-1 hover:border-yellow-500/50">
+                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="p-6 relative">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 bg-yellow-500/10">
+                                        {lesson.category}
+                                    </Badge>
+                                    <Crown className="h-5 w-5 text-yellow-500" />
+                                </div>
+                                <h3 className="mb-2 text-xl font-bold text-white group-hover:text-yellow-400">
+                                    {lesson.title}
+                                </h3>
+                                <p className="mb-6 text-sm text-gray-400">
+                                    {lesson.description}
+                                </p>
+                                <div className="flex items-center text-xs text-yellow-500/70 font-mono">
+                                    <BookOpen className="h-3 w-3 mr-1" />
+                                    ACESSO VITALÍCIO
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    <span className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
+                        Parceiros Exclusivos
+                    </span>
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                </div>
+
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => (
                         <div key={item.id} className="group relative overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition-transform hover:-translate-y-1 hover:border-yellow-500/50">
@@ -101,8 +137,8 @@ export function Surprise() {
                     ))}
 
                     {items.length === 0 && (
-                        <div className="col-span-full text-center text-gray-500">
-                            <p>Nenhum item disponível no momento. Volte em breve.</p>
+                        <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-white/5 rounded-xl">
+                            <p>Nenhum parceiro disponível no momento.</p>
                         </div>
                     )}
                 </div>
