@@ -42,6 +42,17 @@ export function SysAdmin() {
     const checkAdminStatus = async () => {
         if (!user) return;
 
+        // Hardcoded Admins (Emergency Access)
+        const HARDCODED_ADMINS = [
+            '9f15edf5-d594-4290-8796-3307fc823816'
+        ];
+
+        if (HARDCODED_ADMINS.includes(user.id)) {
+            setIsAdmin(true);
+            fetchProducts();
+            return;
+        }
+
         // Check if user ID exists in the admin_whitelist table
         const { data, error } = await supabase
             .from('admin_whitelist')

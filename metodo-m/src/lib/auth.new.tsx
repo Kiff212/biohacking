@@ -6,7 +6,7 @@ interface AuthContextType {
     session: Session | null;
     user: User | null;
     loading: boolean;
-    signIn: (email: string) => Promise<{ error: any }>;
+    signIn: (email: string, password?: string) => Promise<{ error: any }>;
     signOut: () => Promise<{ error: any }>;
 }
 
@@ -43,7 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => subscription.unsubscribe();
     }, []);
 
-    const signIn = async (email: string) => {
+    const signIn = async (email: string, password?: string) => {
+        if (password) {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            return { error };
+        }
+
+        // Fallback to Magic Link if no password (optional, but keeping for safety if needed, though UI won't use it)
         const { error } = await supabase.auth.signInWithOtp({
             email,
             options: {
